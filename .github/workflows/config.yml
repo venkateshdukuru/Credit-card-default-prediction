@@ -1,42 +1,35 @@
 
 
-ci.yml:
-
-name: ci
+name: mobile-ci.yml
 
 on:
-  push:
-    branches:
-      - main
+  pull_request:
+    branches: [feature]
 
 jobs:
-  lint-and-test:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [14.x]
-        python-version: [3.7]
+  build-android:
+    runs-on: macOS
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Install dependencies
-        run: npm install
-      - name: Lint code
-        run: eslint .
-      - name: Run tests
-        run: npm test
-      - name: Fail if errors or failures
-        run: exit 1
-
-  coverage-report:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install additional dependencies
-        run: npm install nyc
-      - name: Generate coverage report
-        run: nyc report --reporter=lcov
-      - name: Upload report as artifact
+      - uses: actions/checkout@v2
+      - name: Set up JDK 1.8
+        uses: actions/setup-java@v1
+        with:
+          java-version: 1.8
+      - name: Download gradle
+        run: wget https://services.gradle.org/distributions/gradle-6.7-bin.zip
+      - name: Unzip gradle
+        run: unzip -qq gradle-6.7-bin.zip
+      - name: Setup gradle environment
+        run: echo "export PATH=$PATH:/home/runner/work/_temp/_github_home/gradle-6.7/bin" >> $HOME/.bash_profile
+      - name: Build Android app
+        run: ./gradlew assembleDebug
+      - name: Archive APK file
         uses: actions/upload-artifact@v2
         with:
-          name: coverage-report
-          path: ./coverage/lcov.info
+          name: app-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+
+  build-ios:
+    runs-on: macOS
+    steps:
+      - uses: actions/checkout
