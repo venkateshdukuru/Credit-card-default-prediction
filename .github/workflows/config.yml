@@ -1,40 +1,31 @@
 
-name: api-docs.yml
+name: branch-protection.yml
 
 on:
   push:
     branches: [main]
-    
+
 jobs:
-  build-docs:
+  enforce-branch-rules:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [18.x]
-    
     steps:
-      - name: Checkout code
+      - name: Check for code changes
         uses: actions/checkout@v2
-        
-      - name: Setup Node.js
-        uses: actions/setup-node@v1
         with:
-          node-version: ${{ matrix.node-version }}
-          
-      - name: Install API documentation generation tools
-        run: npm install --save-dev swagger jsdoc
-        
-      - name: Generate API documentation
-        run: npm run generate-docs
-        
-      - name: Archive documentation folder
-        uses: actions/upload-artifact@v2
-        with:
-          name: docs
-          path: docs
-          
-  deploy-docs:
-    runs-on: ${{ github.event.repository.owner.login }}/any
-    steps:
-      - name: Deploy API documentation
-        run: npm run deploy-docs
+          fetch-depth: 0
+        if: ${{ github.event_name == 'push' }}
+      - name: Enforce requirements
+        if: ${{ steps.check_code_changes.outputs.code_changes == 'true' }}
+        run: |
+          if [ ! -f 'code-coverage-report.txt' ]; then
+            echo "Code coverage report not found. Please make sure it is generated from a previous workflow and available as an artifact."
+            exit 1
+          fi
+          if [ ! -f 'code-linting-results.txt' ]; then
+            echo "Code linting results not found. Please make sure they are generated from a previous workflow and available as an artifact."
+            exit 1
+          fi
+          if [ ! -f 'unit-test-results.txt' ]; then
+            echo "Unit test results not found. Please make sure they are generated from a previous workflow and available as an artifact."
+            exit 1
+         
