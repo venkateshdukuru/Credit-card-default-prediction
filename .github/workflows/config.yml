@@ -1,17 +1,11 @@
 
-name: Example Workflow
 
-on: [push]
-
-jobs:
-  example_job:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Use action from the same repository
-        uses: ./path/to/local/action
-
-      - name: Use action from Docker image
-        uses: docker://docker-image-name
-
-      - name: Use action from another repository
-        uses: owner/repo@ref
+name: John
+age: 18
+Hobbies:
+  - Football
+  - BasketBall
+  - Hockey
+Job:
+  - System administrator
+  - Programmer
