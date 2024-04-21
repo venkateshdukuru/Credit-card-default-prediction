@@ -1,38 +1,28 @@
 
-Name: deploy-multi-env.yml
+name: docker-build-and-test.yml
 
 on:
   push:
-    branches:
-      - main
-
+    branches: [ develop ]
+    
 jobs:
-  deploy:
+  build-image:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-        with:
-          ref: main
+      - name: Build image
+        run: |
+          docker build -t my-app:latest .
+          docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+          docker push my-app:latest
       - name: Install dependencies
-        run: pip install boto3
-      - name: deploy_staging
-        if: github.event.branch == 'staging'
-        needs: deploy
-        steps:
-          - name: Use AWS credentials
-            uses: aws-actions/configure-aws-credentials@v1
-            with:
-              aws-access-key-id: ${{ secrets.AWS_STAGING_KEY }}
-              aws-secret-access-key: ${{ secrets.AWS_STAGING_SECRET }}
-              aws-region: us-east-1
-          - name: Configure environment variables for staging deployment
-            run: boto3 configure set AWS_DEFAULT_REGION us-east-1
-      - name: deploy_production
-        if: github.event.branch == 'master'
-        needs: deploy
-        steps:
-          - name: Use AWS credentials
-            uses: aws-actions/configure-aws-credentials@v1
-            with:
-              aws-access-key-id: ${{ secrets.AWS_PRODUCTION_KEY
+        run: |
+          docker pull node:16-alpine
+          docker run --rm -v $(pwd):/app -w /app node:16-alpine npm install
+          docker run --rm -v $(pwd):/app -w /app node:16-alpine npm run build
+          docker pull python:3.9
+          docker run --rm -v $(pwd):/app -w /app python:3.9 pip install -r requirements.txt
+          docker run --rm -v $(pwd):/app -w /app python:3.9 python manage.py collectstatic --no-input
+  run-integration-tests:
+    runs-on: ubuntu-latest
