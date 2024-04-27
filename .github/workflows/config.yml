@@ -1,39 +1,40 @@
 
 
-name: performance-tests.yml
+
+name: branch-protection.yml
 
 on:
-  pull_request:
-    branches:
-      - performance
+  push:
+    branches: 
+      - main
 
 jobs:
-  run-benchmarks:
-    runs-on: high-performance-machine
+  enforce-branch-rules:
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Install benchmarking tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install apache2-utils wrk
-      - name: Run benchmarks
-        run: |
-          ab -n 1000 -c 100 https://example.com
-          wrk -t 10 -c 100 -d 10s https://example.com
-      - name: Store benchmark results
-        uses: actions/upload-artifact@v2
+      - name: Check for code changes
+        uses: actions/github-script@v3
         with:
-          name: benchmark-results
-          path: benchmark-results/
+          script: |
+            if (github.event.commits.length > 0) {
+              console.log("Code changes detected");
+            } else {
+              console.log("No code changes detected, skipping branch rules enforcement.");
+              return;
+            }
 
-  generate-report:
-    runs-on: any
-    steps:
-      - name: Install data visualization tool
-        run: |
-          sudo apt-get update
-          sudo apt-get install grafana plotly
-      - name: Generate report
-        run: |
-          # command to generate report using Grafana or Plotly
+      - name: Check for code coverage report
+        uses: actions/download-artifact@v2
+        with:
+          name: code-coverage-report
+        if: always()
+
+      - name: Verify code linting and unit tests
+        uses: actions/download-artifact@v2
+        with:
+          name: linting-unit-tests
+        if: always()
+
+      - name: Fail if requirements not met
+        if: ${{ failure() }}
+        run: exit 1
