@@ -1,40 +1,40 @@
 
 
+# branch-protection.yml
 
-name: branch-protection.yml
+name: Branch Protection Workflow
 
 on:
   push:
-    branches: 
+    branches:
       - main
 
 jobs:
   enforce-branch-rules:
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - name: Check for code changes
-        uses: actions/github-script@v3
-        with:
-          script: |
-            if (github.event.commits.length > 0) {
-              console.log("Code changes detected");
-            } else {
-              console.log("No code changes detected, skipping branch rules enforcement.");
-              return;
-            }
-
-      - name: Check for code coverage report
+        run: |
+          git diff-tree --no-commit-id --name-only -r ${{ github.sha }}
+          if [ $? -eq 0 ]; then
+            echo "Code changes detected."
+          else
+            echo "No code changes found."
+            exit 1
+          fi
+      - name: Verify code coverage report
         uses: actions/download-artifact@v2
         with:
           name: code-coverage-report
-        if: always()
-
-      - name: Verify code linting and unit tests
+          path: coverage/
+      - name: Verify code linting and tests
         uses: actions/download-artifact@v2
         with:
-          name: linting-unit-tests
-        if: always()
-
-      - name: Fail if requirements not met
-        if: ${{ failure() }}
-        run: exit 1
+          name: linting-and-tests
+          path: linting-and-tests/
+      - name: Fail workflow if requirements not met
+        run: |
+          if [ -d "coverage/" ] && [ -d "linting-and-tests/" ]; then
+            echo "All requirements met."
+          else
